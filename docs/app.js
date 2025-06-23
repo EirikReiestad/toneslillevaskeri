@@ -30,6 +30,20 @@ function excelDateToNorwegian(serial) {
     return `${day}.${month}.${year}`
 }
 
+// Trim column headers in Excel data
+function trimColumnHeaders(jsonData) {
+    if (!Array.isArray(jsonData) || jsonData.length === 0) return jsonData
+    
+    return jsonData.map(row => {
+        const trimmedRow = {}
+        Object.keys(row).forEach(key => {
+            const trimmedKey = key.trim()
+            trimmedRow[trimmedKey] = row[key]
+        })
+        return trimmedRow
+    })
+}
+
 function renderPreview() {
     dataPreview.innerHTML = ''
     // Always render all three preview containers for consistent layout
@@ -129,7 +143,7 @@ function handleFileInput(input, setData) {
             const sheetName = workbook.SheetNames[0]
             const sheet = workbook.Sheets[sheetName]
             const json = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-            setData(json)
+            setData(trimColumnHeaders(json))
             renderPreview()
             updateStats()
         }
@@ -160,7 +174,7 @@ handleFileInput(mainInput, (data, file) => {
             ) || workbook.SheetNames[0]
         const sheet = workbook.Sheets[sheetName]
         const json = XLSX.utils.sheet_to_json(sheet, { defval: '' })
-        mainData = json
+        mainData = trimColumnHeaders(json)
         // Store main workbook for download
         window.mainWorkbook = workbook
         renderPreview()
@@ -479,16 +493,20 @@ function renderReviewTable(combined) {
         // Clear previous highlights
         highlightedRows.clear()
         const allTableRows = tbody.querySelectorAll('tr')
-        allTableRows.forEach(row => {
+        allTableRows.forEach((row) => {
             row.classList.remove('bg-yellow-200', 'ring-2', 'ring-yellow-400')
         })
-        
+
         if (avstemmingTag) {
             // Find and highlight all rows with the same Avstemming tag
             allTableRows.forEach((row) => {
                 const rowData = row._rowData // Get the data stored with the row
                 if (rowData && rowData['Avstemming'] === avstemmingTag) {
-                    row.classList.add('bg-yellow-200', 'ring-2', 'ring-yellow-400')
+                    row.classList.add(
+                        'bg-yellow-200',
+                        'ring-2',
+                        'ring-yellow-400'
+                    )
                 }
             })
         }
@@ -512,18 +530,18 @@ function renderReviewTable(combined) {
                 // Add subtle background for unmatched rows
                 tr.className = 'bg-gray-50'
             }
-            
+
             // Add click handler
             tr.addEventListener('click', () => {
                 highlightMatchingRows(row['Avstemming'])
             })
-            
+
             // Add cursor pointer if row has Avstemming
             if (row['Avstemming']) {
                 tr.style.cursor = 'pointer'
                 // tr.title = 'Klikk for å fremheve matchende rader'
             }
-            
+
             // Row number
             const tdRowNum = document.createElement('td')
             tdRowNum.className = 'p-2 border-b text-right'
@@ -571,18 +589,18 @@ function renderReviewTable(combined) {
             const tr = document.createElement('tr')
             tr._rowData = row // Store the row data with the table row element
             tr.className = pairColors[colorIdx % pairColors.length]
-            
+
             // Add click handler
             tr.addEventListener('click', () => {
                 highlightMatchingRows(row['Avstemming'])
             })
-            
+
             // Add cursor pointer if row has Avstemming
             if (row['Avstemming']) {
                 tr.style.cursor = 'pointer'
                 // tr.title = 'Klikk for å fremheve matchende rader'
             }
-            
+
             // Row number
             const tdRowNum = document.createElement('td')
             tdRowNum.className = 'p-2 border-b text-right'
@@ -606,23 +624,23 @@ function renderReviewTable(combined) {
         restRows.forEach((row) => {
             const tr = document.createElement('tr')
             tr._rowData = row // Store the row data with the table row element
-            
+
             // Add subtle background for unmatched rows
             if (!row['Avstemming']) {
                 tr.className = 'bg-gray-50'
             }
-            
+
             // Add click handler
             tr.addEventListener('click', () => {
                 highlightMatchingRows(row['Avstemming'])
             })
-            
+
             // Add cursor pointer if row has Avstemming
             if (row['Avstemming']) {
                 tr.style.cursor = 'pointer'
                 //tr.title = 'Klikk for å fremheve matchende rader'
             }
-            
+
             // Row number
             const tdRowNum = document.createElement('td')
             tdRowNum.className = 'p-2 border-b text-right'
@@ -649,6 +667,11 @@ function downloadExcelResults(combined) {
         return
     }
     
+    // Generate timestamp for filename
+    const now = new Date()
+    const dateStr = now.toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_')
+    const filename = `bankavstemming_${dateStr}.xlsx`
+    
     try {
         // Prepare data for Excel
         const headers = MAIN_COLUMNS // No 'Matched' column
@@ -666,22 +689,27 @@ function downloadExcelResults(combined) {
         
         // Try the standard download method first
         try {
-            XLSX.writeFile(wb, 'bankavstemming_updated.xlsx')
+            XLSX.writeFile(wb, filename)
         } catch (downloadError) {
-            console.warn('Standard download failed, trying alternative method:', downloadError)
-            
+            console.warn(
+                'Standard download failed, trying alternative method:',
+                downloadError
+            )
+
             // Alternative download method for problematic browsers
             const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-            
+            const blob = new Blob([wbout], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            })
+
             // Create download link
             const url = window.URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
-            a.download = 'bankavstemming_updated.xlsx'
+            a.download = filename
             document.body.appendChild(a)
             a.click()
-            
+
             // Cleanup
             setTimeout(() => {
                 document.body.removeChild(a)
@@ -693,7 +721,9 @@ function downloadExcelResults(combined) {
         
     } catch (error) {
         console.error('Download failed:', error)
-        alert('Nedlasting feilet. Vennligst prøv igjen eller sjekk at filen ikke er åpen i Excel.')
+        alert(
+            'Nedlasting feilet. Vennligst prøv igjen eller sjekk at filen ikke er åpen i Excel.'
+        )
     }
 }
 
@@ -729,7 +759,7 @@ async function loadSampleFiles() {
                 (n) => n.toLowerCase() === 'bankavstemming'
             ) || mainWorkbook.SheetNames[0]
         const mainSheet = mainWorkbook.Sheets[mainSheetName]
-        mainData = XLSX.utils.sheet_to_json(mainSheet, { defval: '' })
+        mainData = trimColumnHeaders(XLSX.utils.sheet_to_json(mainSheet, { defval: '' }))
 
         // Load SRBank file
         const srbankResponse = await fetch('sample_srbank.xlsx')
@@ -737,7 +767,7 @@ async function loadSampleFiles() {
         const srbankDataArr = new Uint8Array(srbankBuffer)
         const srbankWorkbook = XLSX.read(srbankDataArr, { type: 'array' })
         const srbankSheet = srbankWorkbook.Sheets[srbankWorkbook.SheetNames[0]]
-        srbankData = XLSX.utils.sheet_to_json(srbankSheet, { defval: '' })
+        srbankData = trimColumnHeaders(XLSX.utils.sheet_to_json(srbankSheet, { defval: '' }))
 
         // Load Duett file
         const duettResponse = await fetch('sample_duett.xlsx')
@@ -745,7 +775,7 @@ async function loadSampleFiles() {
         const duettDataArr = new Uint8Array(duettBuffer)
         const duettWorkbook = XLSX.read(duettDataArr, { type: 'array' })
         const duettSheet = duettWorkbook.Sheets[duettWorkbook.SheetNames[0]]
-        const duettJson = XLSX.utils.sheet_to_json(duettSheet, { defval: '' })
+        const duettJson = trimColumnHeaders(XLSX.utils.sheet_to_json(duettSheet, { defval: '' }))
         duettData = Array.isArray(duettJson) ? duettJson.slice(2) : duettJson
 
         // Store main workbook for download
