@@ -15,6 +15,9 @@ let duettData = null
 let mainData = null
 let currentSortMode = 'allByDate' // 'newOnTop' or 'allByDate'
 
+// Save stats to not calculate multiple times
+let total_length = 0
+
 // Excel serial date to Norwegian string
 function excelDateToNorwegian(serial) {
     if (typeof serial !== 'number') return serial
@@ -40,6 +43,9 @@ function renderPreview() {
         container.id = preview.id
         dataPreview.appendChild(container)
     })
+
+    // Update stats after rendering preview
+    updateStats()
 }
 
 function createTablePreview(data, label) {
@@ -49,7 +55,8 @@ function createTablePreview(data, label) {
     title.className = 'font-semibold mb-2'
     // Norwegian preview titles
     let norskLabel = label
-    if (label === 'Main (Bankavstemming)') norskLabel = 'Hovedfil (Bankavstemming)'
+    if (label === 'Main (Bankavstemming)')
+        norskLabel = 'Hovedfil (Bankavstemming)'
     if (label === 'SRBank') norskLabel = 'SR-Bank'
     if (label === 'Duett') norskLabel = 'Duett'
     title.textContent = norskLabel + ' forhåndsvisning'
@@ -57,7 +64,7 @@ function createTablePreview(data, label) {
     // Add scrollable wrapper
     const scrollWrap = document.createElement('div')
     scrollWrap.className =
-        'overflow-x-auto bg-gray-50 rounded shadow-inner w-full'
+        'overflow-x-auto overflow-y-auto max-h-48 bg-gray-50 rounded shadow-inner w-full'
     const table = document.createElement('table')
     table.className = 'min-w-full text-xs border border-gray-200'
     if (data.length === 0) {
@@ -68,10 +75,11 @@ function createTablePreview(data, label) {
     }
     // Header
     const thead = document.createElement('thead')
+    thead.className = 'sticky top-0 bg-blue-50 z-10'
     const headerRow = document.createElement('tr')
     Object.keys(data[0]).forEach((key) => {
         const th = document.createElement('th')
-        th.className = 'p-2 border-b'
+        th.className = 'p-2 border-b text-left'
         th.textContent = key
         headerRow.appendChild(th)
     })
@@ -88,8 +96,9 @@ function createTablePreview(data, label) {
             Object.values(row).some((val) => val !== '')
         )
     }
-    previewRows.slice(0, 5).forEach((row) => {
+    previewRows.forEach((row) => {
         const tr = document.createElement('tr')
+        tr._rowData = row // Store the row data with the table row element
         Object.entries(row).forEach(([key, val]) => {
             const td = document.createElement('td')
             td.className = 'p-2 border-b'
@@ -122,6 +131,7 @@ function handleFileInput(input, setData) {
             const json = XLSX.utils.sheet_to_json(sheet, { defval: '' })
             setData(json)
             renderPreview()
+            updateStats()
         }
         reader.readAsArrayBuffer(file)
     })
@@ -130,11 +140,13 @@ function handleFileInput(input, setData) {
 handleFileInput(srbankInput, (data) => {
     srbankData = data
     renderPreview()
+    updateStats()
 })
 handleFileInput(duettInput, (data) => {
     // Skip first two rows (headers/irrelevant)
     duettData = Array.isArray(data) ? data.slice(2) : data
     renderPreview()
+    updateStats()
 })
 handleFileInput(mainInput, (data, file) => {
     // Custom handler for main file: fetch 'Bankavstemming' sheet if present
@@ -149,7 +161,10 @@ handleFileInput(mainInput, (data, file) => {
         const sheet = workbook.Sheets[sheetName]
         const json = XLSX.utils.sheet_to_json(sheet, { defval: '' })
         mainData = json
+        // Store main workbook for download
+        window.mainWorkbook = workbook
         renderPreview()
+        updateStats()
     }
     reader.readAsArrayBuffer(file)
 })
@@ -191,6 +206,67 @@ function isValidDateString(dateStr) {
     return true
 }
 
+// Create a unique identifier for a transaction
+function createTransactionKey(row) {
+    // Use date, system, amount, and description to create a unique key
+    const date = row['Dato'] || ''
+    const system = row['System'] || ''
+    const netto = parseFloat(row['Netto'] || 0).toFixed(2)
+    const bilag = row['Bilag'] || ''
+
+    return `${date}|${system}|${netto}|${bilag}`.toLowerCase()
+}
+
+// Remove duplicate transactions from a list
+function removeDuplicates(rows) {
+    const seen = new Set()
+    const unique = []
+
+    for (const row of rows) {
+        const key = createTransactionKey(row)
+        if (!seen.has(key)) {
+            seen.add(key)
+            unique.push(row)
+        }
+    }
+
+    return unique
+}
+
+function mergeRows(mainRows, srbankRows, duettRows) {
+    // Only keep rows with a valid date and remove duplicates
+    const mainMapped = mainRows
+        .map(mapMainRow)
+        .filter((row) => isValidDateString(row['Dato']))
+    const srbankMapped = srbankRows
+        .map(mapSRBankToMain)
+        .filter((row) => isValidDateString(row['Dato']))
+    const duettMapped = duettRows
+        .map(mapDuettToMain)
+        .filter((row) => isValidDateString(row['Dato']))
+
+    const seen = new Set()
+    const unique = []
+
+    for (const row of mainMapped) {
+        const key = createTransactionKey(row)
+        if (!seen.has(key)) {
+            seen.add(key)
+            unique.push(row)
+        }
+    }
+    for (const row of [...srbankMapped, ...duettMapped]) {
+        const key = createTransactionKey(row)
+        if (!seen.has(key)) {
+            seen.add(key)
+            unique.push(row)
+            continue
+        }
+    }
+
+    return unique
+}
+
 function mapMainRow(row) {
     // Ensure all columns exist
     const out = {}
@@ -212,14 +288,14 @@ function mapSRBankToMain(row) {
         System: 'SR-bank',
         Inn: row['Inn'] || '',
         Ut: row['Ut'] || '',
-        Netto: parseFloat(row['Inn'] || 0) - parseFloat(row['Ut'] || 0) || '',
+        Netto: parseFloat(row['Inn'] || 0) + parseFloat(row['Ut'] || 0) || '',
         'SR+ DU-':
-            parseFloat(row['Inn'] || 0) - parseFloat(row['Ut'] || 0) || '',
+            parseFloat(row['Inn'] || 0) + parseFloat(row['Ut'] || 0) || '',
         Avstemming: '',
         'SR-bank: Type': row['Type'] || '',
         'SR-bank: Fra': row['Fra'] || '',
         'SR-bank: Til': row['Til'] || '',
-        Bilag: row['Num.Ref'] || '',
+        Bilag: '',
         'Duett: Periode': '',
         Beskrivelse: row['Beskrivelse'] || '',
     }
@@ -236,31 +312,23 @@ function mapDuettToMain(row) {
         Netto:
             parseFloat(row['Debet'] || 0) - parseFloat(row['Kredit'] || 0) ||
             '',
-        'SR+ DU-':
-            parseFloat(row['Debet'] || 0) - parseFloat(row['Kredit'] || 0) ||
-            '',
+        'SR+ DU-': -(
+            parseFloat(row['Debet'] || 0) - parseFloat(row['Kredit'] || 0) || ''
+        ),
         Avstemming: '',
         'SR-bank: Type': '',
         'SR-bank: Fra': '',
         'SR-bank: Til': '',
         Bilag: row['Bilag'] || '',
         'Duett: Periode': row['Merknad'] || '',
-        Beskrivelse: row['Kontonavn'] || '',
+        Beskrivelse: '',
     }
 }
 
 function matchAllTransactions(mainRows, srbankRows, duettRows) {
-    // Only keep rows with a valid date
-    const mainMapped = mainRows
-        .map(mapMainRow)
-        .filter((row) => isValidDateString(row['Dato']))
-    const srbankMapped = srbankRows
-        .map(mapSRBankToMain)
-        .filter((row) => isValidDateString(row['Dato']))
-    const duettMapped = duettRows
-        .map(mapDuettToMain)
-        .filter((row) => isValidDateString(row['Dato']))
-    const all = [...mainMapped, ...srbankMapped, ...duettMapped]
+    const all = mergeRows(mainRows, srbankRows, duettRows)
+    total_length = all.length
+
     all.sort((a, b) =>
         a['Dato'] > b['Dato'] ? 1 : a['Dato'] < b['Dato'] ? -1 : 0
     )
@@ -285,7 +353,7 @@ function matchAllTransactions(mainRows, srbankRows, duettRows) {
             if (all[i]['System'] === all[j]['System']) continue
             const n1 = parseFloat(all[i]['Netto'] || 0)
             const n2 = parseFloat(all[j]['Netto'] || 0)
-            if (Math.abs(n1 + n2) < 0.01) {
+            if (Math.abs(n1 - n2) < 0.01) {
                 const d1 = new Date(
                     all[i]['Dato'].split('.').reverse().join('-')
                 )
@@ -340,7 +408,8 @@ function parseNorwegianDate(dateStr) {
 function renderReviewTable(combined) {
     reviewView.innerHTML = ''
     if (!combined || combined.length === 0) {
-        reviewView.innerHTML = '<div class="text-gray-500">Ingen data å gjennomgå.</div>'
+        reviewView.innerHTML =
+            '<div class="text-gray-500">Ingen data å gjennomgå.</div>'
         return
     }
     // Outer wrapper for margin
@@ -384,16 +453,16 @@ function renderReviewTable(combined) {
     const table = document.createElement('table')
     table.className = 'min-w-full text-xs border border-gray-300'
     const thead = document.createElement('thead')
-    thead.className = 'sticky top-0 bg-white z-10'
+    thead.className = 'sticky top-0 bg-blue-50 z-10'
     const headerRow = document.createElement('tr')
     // Add row number header
     const thRowNum = document.createElement('th')
-    thRowNum.className = 'p-2 border-b'
+    thRowNum.className = 'p-2 border-b text-left'
     thRowNum.textContent = '#'
     headerRow.appendChild(thRowNum)
     MAIN_COLUMNS.forEach((h) => {
         const th = document.createElement('th')
-        th.className = 'p-2 border-b'
+        th.className = 'p-2 border-b text-left'
         th.textContent = h
         headerRow.appendChild(th)
     })
@@ -403,6 +472,27 @@ function renderReviewTable(combined) {
     const pairColors = ['bg-green-200', 'bg-green-100']
     let colorIdx = 0
     let rowNum = 1
+    let highlightedRows = new Set() // Track currently highlighted rows
+
+    // Function to highlight matching rows
+    function highlightMatchingRows(avstemmingTag) {
+        // Clear previous highlights
+        highlightedRows.clear()
+        const allTableRows = tbody.querySelectorAll('tr')
+        allTableRows.forEach(row => {
+            row.classList.remove('bg-yellow-200', 'ring-2', 'ring-yellow-400')
+        })
+        
+        if (avstemmingTag) {
+            // Find and highlight all rows with the same Avstemming tag
+            allTableRows.forEach((row) => {
+                const rowData = row._rowData // Get the data stored with the row
+                if (rowData && rowData['Avstemming'] === avstemmingTag) {
+                    row.classList.add('bg-yellow-200', 'ring-2', 'ring-yellow-400')
+                }
+            })
+        }
+    }
 
     if (currentSortMode === 'allByDate') {
         // Show all transactions, sorted by full date
@@ -414,7 +504,26 @@ function renderReviewTable(combined) {
         })
         allRows.forEach((row) => {
             const tr = document.createElement('tr')
-            if (row._matched) tr.className = pairColors[0]
+            tr._rowData = row // Store the row data with the table row element
+            if (row._matched) {
+                tr.className = pairColors[colorIdx % pairColors.length]
+                colorIdx++
+            } else if (!row['Avstemming']) {
+                // Add subtle background for unmatched rows
+                tr.className = 'bg-gray-50'
+            }
+            
+            // Add click handler
+            tr.addEventListener('click', () => {
+                highlightMatchingRows(row['Avstemming'])
+            })
+            
+            // Add cursor pointer if row has Avstemming
+            if (row['Avstemming']) {
+                tr.style.cursor = 'pointer'
+                // tr.title = 'Klikk for å fremheve matchende rader'
+            }
+            
             // Row number
             const tdRowNum = document.createElement('td')
             tdRowNum.className = 'p-2 border-b text-right'
@@ -460,7 +569,20 @@ function renderReviewTable(combined) {
         })
         newPairRows.forEach((row) => {
             const tr = document.createElement('tr')
+            tr._rowData = row // Store the row data with the table row element
             tr.className = pairColors[colorIdx % pairColors.length]
+            
+            // Add click handler
+            tr.addEventListener('click', () => {
+                highlightMatchingRows(row['Avstemming'])
+            })
+            
+            // Add cursor pointer if row has Avstemming
+            if (row['Avstemming']) {
+                tr.style.cursor = 'pointer'
+                // tr.title = 'Klikk for å fremheve matchende rader'
+            }
+            
             // Row number
             const tdRowNum = document.createElement('td')
             tdRowNum.className = 'p-2 border-b text-right'
@@ -483,6 +605,24 @@ function renderReviewTable(combined) {
         })
         restRows.forEach((row) => {
             const tr = document.createElement('tr')
+            tr._rowData = row // Store the row data with the table row element
+            
+            // Add subtle background for unmatched rows
+            if (!row['Avstemming']) {
+                tr.className = 'bg-gray-50'
+            }
+            
+            // Add click handler
+            tr.addEventListener('click', () => {
+                highlightMatchingRows(row['Avstemming'])
+            })
+            
+            // Add cursor pointer if row has Avstemming
+            if (row['Avstemming']) {
+                tr.style.cursor = 'pointer'
+                //tr.title = 'Klikk for å fremheve matchende rader'
+            }
+            
             // Row number
             const tdRowNum = document.createElement('td')
             tdRowNum.className = 'p-2 border-b text-right'
@@ -504,23 +644,57 @@ function renderReviewTable(combined) {
 }
 
 function downloadExcelResults(combined) {
-    if (!mainWorkbook) {
-        alert('Original hovedfil ikke lastet inn.');
-        return;
+    if (!combined || combined.length === 0) {
+        alert('Ingen data å laste ned.')
+        return
     }
-    // Prepare data for Excel
-    const headers = MAIN_COLUMNS // No 'Matched' column
-    const data = combined.map((row) => {
-        const out = {}
-        headers.forEach((h) => {
-            out[h] = row[h] || ''
+    
+    try {
+        // Prepare data for Excel
+        const headers = MAIN_COLUMNS // No 'Matched' column
+        const data = combined.map((row) => {
+            const out = {}
+            headers.forEach((h) => {
+                out[h] = row[h] || ''
+            })
+            return out
         })
-        return out
-    })
-    const ws = XLSX.utils.json_to_sheet(data, { header: headers })
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Bankavstemming')
-    XLSX.writeFile(wb, 'bankavstemming_updated.xlsx')
+        
+        const ws = XLSX.utils.json_to_sheet(data, { header: headers })
+        const wb = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(wb, ws, 'Bankavstemming')
+        
+        // Try the standard download method first
+        try {
+            XLSX.writeFile(wb, 'bankavstemming_updated.xlsx')
+        } catch (downloadError) {
+            console.warn('Standard download failed, trying alternative method:', downloadError)
+            
+            // Alternative download method for problematic browsers
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+            
+            // Create download link
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'bankavstemming_updated.xlsx'
+            document.body.appendChild(a)
+            a.click()
+            
+            // Cleanup
+            setTimeout(() => {
+                document.body.removeChild(a)
+                window.URL.revokeObjectURL(url)
+            }, 100)
+        }
+        
+        console.log('Download completed successfully')
+        
+    } catch (error) {
+        console.error('Download failed:', error)
+        alert('Nedlasting feilet. Vennligst prøv igjen eller sjekk at filen ikke er åpen i Excel.')
+    }
 }
 
 // --- Hook up Review Tab ---
@@ -541,3 +715,119 @@ navReview.addEventListener('click', (e) => {
             '<div class="text-gray-500 text-center mt-12">Vennligst last opp alle tre filene for å gjennomgå matcher.</div>'
     }
 })
+
+// Load sample files for debugging
+async function loadSampleFiles() {
+    try {
+        // Load main file
+        const mainResponse = await fetch('sample_main.xlsx')
+        const mainBuffer = await mainResponse.arrayBuffer()
+        const mainDataArr = new Uint8Array(mainBuffer)
+        const mainWorkbook = XLSX.read(mainDataArr, { type: 'array' })
+        let mainSheetName =
+            mainWorkbook.SheetNames.find(
+                (n) => n.toLowerCase() === 'bankavstemming'
+            ) || mainWorkbook.SheetNames[0]
+        const mainSheet = mainWorkbook.Sheets[mainSheetName]
+        mainData = XLSX.utils.sheet_to_json(mainSheet, { defval: '' })
+
+        // Load SRBank file
+        const srbankResponse = await fetch('sample_srbank.xlsx')
+        const srbankBuffer = await srbankResponse.arrayBuffer()
+        const srbankDataArr = new Uint8Array(srbankBuffer)
+        const srbankWorkbook = XLSX.read(srbankDataArr, { type: 'array' })
+        const srbankSheet = srbankWorkbook.Sheets[srbankWorkbook.SheetNames[0]]
+        srbankData = XLSX.utils.sheet_to_json(srbankSheet, { defval: '' })
+
+        // Load Duett file
+        const duettResponse = await fetch('sample_duett.xlsx')
+        const duettBuffer = await duettResponse.arrayBuffer()
+        const duettDataArr = new Uint8Array(duettBuffer)
+        const duettWorkbook = XLSX.read(duettDataArr, { type: 'array' })
+        const duettSheet = duettWorkbook.Sheets[duettWorkbook.SheetNames[0]]
+        const duettJson = XLSX.utils.sheet_to_json(duettSheet, { defval: '' })
+        duettData = Array.isArray(duettJson) ? duettJson.slice(2) : duettJson
+
+        // Store main workbook for download
+        window.mainWorkbook = mainWorkbook
+
+        // Render preview
+        renderPreview()
+
+        // Update stats
+        updateStats()
+    } catch (error) {
+        console.error('Error loading sample files:', error)
+    }
+}
+
+// Load sample files when page loads
+// document.addEventListener('DOMContentLoaded', loadSampleFiles)
+
+// Stats calculation and display functions
+function updateStats() {
+    // Count only valid rows (with valid dates)
+    const mainCount = mainData
+        ? mainData.filter((row) =>
+              isValidDateString(excelDateToNorwegian(row['Dato']))
+          ).length
+        : 0
+    const srbankCount = srbankData
+        ? srbankData.filter((row) =>
+              isValidDateString(excelDateToNorwegian(row['Dato']))
+          ).length
+        : 0
+    const duettCount = duettData
+        ? duettData.filter((row) =>
+              isValidDateString(excelDateToNorwegian(row['Dato']))
+          ).length
+        : 0
+
+    // Update file counts
+    document.getElementById('main-count').textContent = mainCount
+    document.getElementById('srbank-count').textContent = srbankCount
+    document.getElementById('duett-count').textContent = duettCount
+
+    // Calculate expected total (main + new transactions)
+    const expectedTotal = total_length
+    document.getElementById('expected-total').textContent = expectedTotal
+
+    // Calculate matching statistics if all files are loaded
+    if (mainData && srbankData && duettData) {
+        const combined = matchAllTransactions(mainData, srbankData, duettData)
+
+        // Count existing matches (rows with Avstemming that are not new)
+        const existingMatches = combined.filter(
+            (row) => row['Avstemming'] && !row._matched
+        ).length
+        const newMatches = combined.filter((row) => row._matched).length
+
+        // Calculate percentages relative to expected total (main + new matches)
+        const existingPercentage =
+            expectedTotal > 0
+                ? Math.round((existingMatches / expectedTotal) * 100)
+                : 0
+        const newPercentage =
+            expectedTotal > 0
+                ? Math.round((newMatches / expectedTotal) * 100)
+                : 0
+
+        // Count total matches (existing + new)
+        const totalMatches = existingMatches + newMatches
+        const totalPercentage =
+            expectedTotal > 0
+                ? Math.round((totalMatches / expectedTotal) * 100)
+                : 0
+
+        // Update stats
+        document.getElementById('existing-matches').textContent =
+            existingPercentage
+        document.getElementById('new-matches').textContent = newPercentage
+        document.getElementById('total-matches').textContent = totalPercentage
+    } else {
+        // Reset stats if not all files loaded
+        document.getElementById('existing-matches').textContent = '-'
+        document.getElementById('new-matches').textContent = '-'
+        document.getElementById('total-matches').textContent = '-'
+    }
+}

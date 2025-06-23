@@ -10,6 +10,20 @@
   </head>
   <body class="bg-gray-100 h-screen overflow-hidden font-sans">
     <div class="h-full flex flex-col justify-start min-h-screen">
+      <!-- Stats Panel -->
+      <div id="stats-panel" class="absolute top-4 left-4 bg-white rounded-lg shadow p-4 text-sm z-20 max-w-xs">
+        <h3 class="font-semibold mb-2 text-gray-800">Statistikk</h3>
+        <div id="stats-content" class="text-gray-600">
+          <div>Hovedfil: <span id="main-count">-</span> rader</div>
+          <div>SR-Bank: <span id="srbank-count">-</span> rader</div>
+          <div>Duett: <span id="duett-count">-</span> rader</div>
+          <div class="border-t pt-1 mt-1">Forventet total: <span id="expected-total">-</span> rader</div>
+          <div>Eksisterende matcher: <span id="existing-matches">-</span>%</div>
+          <div>Nye matcher: <span id="new-matches">-</span>%</div>
+          <div>Total matcher: <span id="total-matches">-</span>%</div>
+        </div>
+      </div>
+      
       <nav class="w-full max-w-3xl mx-auto flex justify-center mt-12 mb-10">
         <div class="flex space-x-12 text-xl text-center w-full justify-center">
           <a href="#" id="nav-input" class="text-gray-800 border-b-2 border-blue-600 pb-1">Inndata</a>
