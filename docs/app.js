@@ -33,10 +33,10 @@ function excelDateToNorwegian(serial) {
 // Trim column headers in Excel data
 function trimColumnHeaders(jsonData) {
     if (!Array.isArray(jsonData) || jsonData.length === 0) return jsonData
-    
-    return jsonData.map(row => {
+
+    return jsonData.map((row) => {
         const trimmedRow = {}
-        Object.keys(row).forEach(key => {
+        Object.keys(row).forEach((key) => {
             const trimmedKey = key.trim()
             trimmedRow[trimmedKey] = row[key]
         })
@@ -666,27 +666,41 @@ function downloadExcelResults(combined) {
         alert('Ingen data å laste ned.')
         return
     }
-    
+
     // Generate timestamp for filename
     const now = new Date()
-    const dateStr = now.toISOString().slice(0, 19).replace(/:/g, '-').replace('T', '_')
+    const dateStr = now
+        .toISOString()
+        .slice(0, 19)
+        .replace(/:/g, '-')
+        .replace('T', '_')
     const filename = `bankavstemming_${dateStr}.xlsx`
-    
+
     try {
         // Prepare data for Excel
         const headers = MAIN_COLUMNS // No 'Matched' column
-        const data = combined.map((row) => {
+
+        const sortedData = [...combined].sort((a, b) => {
+            const parse = (str) => {
+                if (!str || typeof str !== 'string') return ''
+                const [d, m, y] = str.split('.')
+                return new Date(`${y}-${m}-${d}`)
+            }
+            return parse(a['Dato']) - parse(b['Dato'])
+        })
+
+        const data = sortedData.map((row) => {
             const out = {}
             headers.forEach((h) => {
                 out[h] = row[h] || ''
             })
             return out
         })
-        
+
         const ws = XLSX.utils.json_to_sheet(data, { header: headers })
         const wb = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(wb, ws, 'Bankavstemming')
-        
+
         // Try the standard download method first
         try {
             XLSX.writeFile(wb, filename)
@@ -716,9 +730,8 @@ function downloadExcelResults(combined) {
                 window.URL.revokeObjectURL(url)
             }, 100)
         }
-        
+
         console.log('Download completed successfully')
-        
     } catch (error) {
         console.error('Download failed:', error)
         alert(
@@ -759,7 +772,9 @@ async function loadSampleFiles() {
                 (n) => n.toLowerCase() === 'bankavstemming'
             ) || mainWorkbook.SheetNames[0]
         const mainSheet = mainWorkbook.Sheets[mainSheetName]
-        mainData = trimColumnHeaders(XLSX.utils.sheet_to_json(mainSheet, { defval: '' }))
+        mainData = trimColumnHeaders(
+            XLSX.utils.sheet_to_json(mainSheet, { defval: '' })
+        )
 
         // Load SRBank file
         const srbankResponse = await fetch('sample_srbank.xlsx')
@@ -767,7 +782,9 @@ async function loadSampleFiles() {
         const srbankDataArr = new Uint8Array(srbankBuffer)
         const srbankWorkbook = XLSX.read(srbankDataArr, { type: 'array' })
         const srbankSheet = srbankWorkbook.Sheets[srbankWorkbook.SheetNames[0]]
-        srbankData = trimColumnHeaders(XLSX.utils.sheet_to_json(srbankSheet, { defval: '' }))
+        srbankData = trimColumnHeaders(
+            XLSX.utils.sheet_to_json(srbankSheet, { defval: '' })
+        )
 
         // Load Duett file
         const duettResponse = await fetch('sample_duett.xlsx')
@@ -775,7 +792,9 @@ async function loadSampleFiles() {
         const duettDataArr = new Uint8Array(duettBuffer)
         const duettWorkbook = XLSX.read(duettDataArr, { type: 'array' })
         const duettSheet = duettWorkbook.Sheets[duettWorkbook.SheetNames[0]]
-        const duettJson = trimColumnHeaders(XLSX.utils.sheet_to_json(duettSheet, { defval: '' }))
+        const duettJson = trimColumnHeaders(
+            XLSX.utils.sheet_to_json(duettSheet, { defval: '' })
+        )
         duettData = Array.isArray(duettJson) ? duettJson.slice(2) : duettJson
 
         // Store main workbook for download
