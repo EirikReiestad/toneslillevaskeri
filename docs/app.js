@@ -416,7 +416,8 @@ function parseNorwegianDate(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return ''
     const parts = dateStr.split('.')
     if (parts.length !== 3) return ''
-    return `${parts[2]}-${parts[1]}-${parts[0]}`
+    return new Date(parts[2], parts[1] - 1, parts[0])
+    // return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
 function renderReviewTable(combined) {
@@ -518,7 +519,8 @@ function renderReviewTable(combined) {
         allRows.sort((a, b) => {
             const da = parseNorwegianDate(a['Dato'])
             const db = parseNorwegianDate(b['Dato'])
-            return da > db ? 1 : da < db ? -1 : 0
+            return da - db
+            // return da > db ? 1 : da < db ? -1 : 0
         })
         allRows.forEach((row) => {
             const tr = document.createElement('tr')
