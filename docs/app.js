@@ -156,7 +156,8 @@ function handleFileInput(input, setData) {
 handleFileInput(srbankInput, (data) => {
     srbankData = data
     srbankData.map((row) => {
-        newRow['Dato'] = row['Dato'].replace('.', '/')
+        newRow = row
+        newRow['Dato'] = newRow['Dato'].replace('.', '/')
         return newRow
     })
     renderPreview()
