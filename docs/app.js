@@ -369,10 +369,10 @@ function matchAllTransactions(mainRows, srbankRows, duettRows) {
             const n2 = parseFloat(all[j]['Netto'] || 0)
             if (Math.abs(n1 - n2) < 0.01) {
                 const d1 = new Date(
-                    all[i]['Dato'].split('.').reverse().join('-')
+                    all[i]['Dato'].split('/').reverse().join('-')
                 )
                 const d2 = new Date(
-                    all[j]['Dato'].split('.').reverse().join('-')
+                    all[j]['Dato'].split('/').reverse().join('-')
                 )
                 const diffDays = Math.abs((d1 - d2) / (1000 * 60 * 60 * 24))
                 if (diffDays <= 3) {
@@ -412,9 +412,9 @@ function matchAllTransactions(mainRows, srbankRows, duettRows) {
 
 // --- Review Table ---
 function parseNorwegianDate(dateStr) {
-    // Converts DD.MM.YYYY to YYYY-MM-DD for sorting
+    // Converts DD/MM/YYYY to YYYY-MM-DD for sorting
     if (!dateStr || typeof dateStr !== 'string') return ''
-    const parts = dateStr.split('.')
+    const parts = dateStr.split('/')
     if (parts.length !== 3) return ''
     return new Date(parts[2], parts[1] - 1, parts[0])
     // return `${parts[2]}-${parts[1]}-${parts[0]}`
@@ -685,8 +685,8 @@ function downloadExcelResults(combined) {
         const sortedData = [...combined].sort((a, b) => {
             const parse = (str) => {
                 if (!str || typeof str !== 'string') return ''
-                const [d, m, y] = str.split('.')
-                return new Date(`${y}-${m}-${d}`)
+                const [d, m, y] = str.split('/')
+                return new Date(`${y}/${m}/${d}`)
             }
             return parse(a['Dato']) - parse(b['Dato'])
         })
