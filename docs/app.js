@@ -27,7 +27,7 @@ function excelDateToNorwegian(serial) {
     const day = String(date_info.getUTCDate()).padStart(2, '0')
     const month = String(date_info.getUTCMonth() + 1).padStart(2, '0')
     const year = date_info.getUTCFullYear()
-    return `${day}.${month}.${year}`
+    return `${day}/${month}/${year}`
 }
 
 // Trim column headers in Excel data
