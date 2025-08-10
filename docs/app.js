@@ -18,7 +18,7 @@ let currentSortMode = 'allByDate' // 'newOnTop' or 'allByDate'
 // Save stats to not calculate multiple times
 let total_length = 0
 
-console.log(`Version 0.0.1`)
+console.log(`Version 0.0.2`)
 
 // Excel serial date to Norwegian string
 function excelDateToNorwegian(serial) {
@@ -156,7 +156,7 @@ function handleFileInput(input, setData) {
 handleFileInput(srbankInput, (data) => {
     srbankData = data
     srbankData.map((row) => {
-        newRow = row
+        const newRow = row
         newRow['Dato'] = newRow['Dato'].replace('.', '/')
         return newRow
     })
