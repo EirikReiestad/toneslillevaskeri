@@ -154,7 +154,7 @@ function handleFileInput(input, setData) {
 handleFileInput(srbankInput, (data) => {
     srbankData = data
     srbankData.forEach((row) => {
-        row[0].replace('.', '/')
+        row['Dato'].replace('.', '/')
     })
     renderPreview()
     updateStats()
@@ -162,9 +162,6 @@ handleFileInput(srbankInput, (data) => {
 handleFileInput(duettInput, (data) => {
     // Skip first two rows (headers/irrelevant)
     duettData = Array.isArray(data) ? data.slice(2) : data
-    duettData.forEach((row) => {
-        row[0].replace('.', '/')
-    })
     renderPreview()
     updateStats()
 })
