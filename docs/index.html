@@ -1,59 +1,134 @@
 <!doctype html>
 <html lang="no">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tones Lille Vaskeri - Transaksjonsavstemming</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="app.js" defer></script>
-  </head>
-  <body class="bg-gray-100 h-screen overflow-hidden font-sans">
-    <div class="h-full flex flex-col justify-start min-h-screen">
-      <!-- Stats Panel -->
-      <div id="stats-panel" class="absolute top-4 left-4 bg-white rounded-lg shadow p-4 text-sm z-20 max-w-xs">
-        <h3 class="font-semibold mb-2 text-gray-800">Statistikk</h3>
-        <div id="stats-content" class="text-gray-600">
-          <div>Hovedfil: <span id="main-count">-</span> rader</div>
-          <div>SR-Bank: <span id="srbank-count">-</span> rader</div>
-          <div>Duett: <span id="duett-count">-</span> rader</div>
-          <div class="border-t pt-1 mt-1">Forventet total: <span id="expected-total">-</span> rader</div>
-          <div>Eksisterende matcher: <span id="existing-matches">-</span>%</div>
-          <div>Nye matcher: <span id="new-matches">-</span>%</div>
-          <div>Total matcher: <span id="total-matches">-</span>%</div>
-        </div>
-      </div>
-      
-      <nav class="w-full max-w-3xl mx-auto flex justify-center mt-12 mb-10">
-        <div class="flex space-x-12 text-xl text-center w-full justify-center">
-          <a href="#" id="nav-input" class="text-gray-800 border-b-2 border-blue-600 pb-1">Inndata</a>
-          <a href="#" id="nav-review" class="text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-400 pb-1 transition">Gjennomgå matcher</a>
-        </div>
-      </nav>
-      <main class="w-full flex flex-col justify-center flex-1">
-        <div class="w-full max-w-7xl mx-auto px-4">
-          <div id="input-view">
-            <div class="flex flex-col sm:flex-row sm:space-x-8 mb-8 w-full justify-center items-stretch">
-              <section class="bg-white rounded-lg shadow p-6 flex-1 sm:w-1/3 mb-4 sm:mb-0">
-                <label class="block font-semibold mb-2" for="main-upload">Last opp hovedfil (Bankavstemming, Excel):</label>
-                <input type="file" id="main-upload" accept=".xlsx,.xls" class="block w-full p-2 border border-gray-300 rounded mb-2" />
-              </section>
-              <section class="bg-white rounded-lg shadow p-6 flex-1 sm:w-1/3 mb-4 sm:mb-0">
-                <label class="block font-semibold mb-2" for="srbank-upload">Last opp SR-Bank-fil (Excel):</label>
-                <input type="file" id="srbank-upload" accept=".xlsx,.xls" class="block w-full p-2 border border-gray-300 rounded mb-2" />
-              </section>
-              <section class="bg-white rounded-lg shadow p-6 flex-1 sm:w-1/3">
-                <label class="block font-semibold mb-2" for="duett-upload">Last opp Duett-fil (Excel):</label>
-                <input type="file" id="duett-upload" accept=".xlsx,.xls" class="block w-full p-2 border border-gray-300 rounded mb-2" />
-              </section>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Tones Lille Vaskeri - Transaksjonsavstemming</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+        <script src="globals.js" defer></script>
+        <script src="utils.js" defer></script>
+        <script src="statistics.js" defer></script>
+        <script src="loader.js" defer></script>
+        <script src="preview.js" defer></script>
+        <script src="fileHandler.js" defer></script>
+        <script src="download.js" defer></script>
+        <script src="mainHandler.js" defer></script>
+        <script src="render.js" defer></script>
+        <script src="transactionHandler.js" defer></script>
+        <script src="app.js" defer></script>
+    </head>
+    <body class="bg-gray-100 h-screen overflow-hidden font-sans">
+        <div class="h-full flex flex-col justify-start min-h-screen">
+            <!-- Stats Panel -->
+            <div
+                id="stats-panel"
+                class="absolute top-4 left-4 bg-white rounded-lg shadow p-4 text-sm z-20 max-w-xs"
+            >
+                <h3 class="font-semibold mb-2 text-gray-800">Statistikk</h3>
+                <div id="stats-content" class="text-gray-600">
+                    <div>Hovedfil: <span id="main-count">-</span> rader</div>
+                    <div>SR-Bank: <span id="srbank-count">-</span> rader</div>
+                    <div>Duett: <span id="duett-count">-</span> rader</div>
+                    <div class="border-t pt-1 mt-1">
+                        Forventet total:
+                        <span id="expected-total">-</span> rader
+                    </div>
+                    <div>
+                        Eksisterende matcher:
+                        <span id="existing-matches">-</span>%
+                    </div>
+                    <div>Nye matcher: <span id="new-matches">-</span>%</div>
+                    <div>Total matcher: <span id="total-matches">-</span>%</div>
+                </div>
             </div>
-            <div class="flex flex-col sm:flex-row sm:space-x-8 mb-8 w-full justify-center items-stretch">
-              <div id="data-preview" class="w-full"></div>
-            </div>
-          </div>
+
+            <nav
+                class="w-full max-w-3xl mx-auto flex justify-center mt-12 mb-10"
+            >
+                <div
+                    class="flex space-x-12 text-xl text-center w-full justify-center"
+                >
+                    <a
+                        href="#"
+                        id="nav-input"
+                        class="text-gray-800 border-b-2 border-blue-600 pb-1"
+                        >Inndata</a
+                    >
+                    <a
+                        href="#"
+                        id="nav-review"
+                        class="text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-400 pb-1 transition"
+                        >Gjennomgå matcher</a
+                    >
+                </div>
+            </nav>
+            <main class="w-full flex flex-col justify-center flex-1">
+                <div class="w-full max-w-7xl mx-auto px-4">
+                    <div id="input-view">
+                        <div
+                            class="flex flex-col sm:flex-row sm:space-x-8 mb-8 w-full justify-center items-stretch"
+                        >
+                            <section
+                                class="bg-white rounded-lg shadow p-6 flex-1 sm:w-1/3 mb-4 sm:mb-0"
+                            >
+                                <label
+                                    class="block font-semibold mb-2"
+                                    for="main-upload"
+                                    >Last opp hovedfil (Bankavstemming,
+                                    Excel):</label
+                                >
+                                <input
+                                    type="file"
+                                    id="main-upload"
+                                    accept=".xlsx,.xls"
+                                    class="block w-full p-2 border border-gray-300 rounded mb-2"
+                                />
+                            </section>
+                            <section
+                                class="bg-white rounded-lg shadow p-6 flex-1 sm:w-1/3 mb-4 sm:mb-0"
+                            >
+                                <label
+                                    class="block font-semibold mb-2"
+                                    for="srbank-upload"
+                                    >Last opp SR-Bank-fil (Excel):</label
+                                >
+                                <input
+                                    type="file"
+                                    id="srbank-upload"
+                                    accept=".xlsx,.xls"
+                                    class="block w-full p-2 border border-gray-300 rounded mb-2"
+                                />
+                            </section>
+                            <section
+                                class="bg-white rounded-lg shadow p-6 flex-1 sm:w-1/3"
+                            >
+                                <label
+                                    class="block font-semibold mb-2"
+                                    for="duett-upload"
+                                    >Last opp Duett-fil (Excel):</label
+                                >
+                                <input
+                                    type="file"
+                                    id="duett-upload"
+                                    accept=".xlsx,.xls"
+                                    class="block w-full p-2 border border-gray-300 rounded mb-2"
+                                />
+                            </section>
+                        </div>
+                        <div
+                            class="flex flex-col sm:flex-row sm:space-x-8 mb-8 w-full justify-center items-stretch"
+                        >
+                            <div id="data-preview" class="w-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    id="review-view"
+                    style="display: none"
+                    class="w-full"
+                ></div>
+            </main>
         </div>
-        <div id="review-view" style="display: none" class="w-full"></div>
-      </main>
-    </div>
-  </body>
-</html> 
+    </body>
+</html>
