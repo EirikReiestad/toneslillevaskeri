@@ -56,11 +56,12 @@ function matchAllTransactions(mainRows, srbankRows, duettRows) {
             const n2 = parseFloat(all[j]['Netto'] || 0)
             if (Math.abs(n1 - n2) < 0.01) {
                 const d1 = new Date(
-                    all[i]['Dato'].split('.').reverse().join('-')
+                    all[i]['Dato'].split('/').reverse().join('-')
                 )
                 const d2 = new Date(
-                    all[j]['Dato'].split('.').reverse().join('-')
+                    all[j]['Dato'].split('/').reverse().join('-')
                 )
+                console.log(all[i]['Dato'], d1, all[j]['Dato'], d2)
                 const diffDays = Math.abs((d1 - d2) / (1000 * 60 * 60 * 24))
                 if (diffDays <= 3) {
                     const tag = `A${tagCounter++}`
