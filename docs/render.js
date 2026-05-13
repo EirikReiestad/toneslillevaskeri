@@ -17,12 +17,12 @@ function renderReviewTable(combined) {
         'px-2 py-2 bg-gray-200 rounded hover:bg-gray-300 flex items-center justify-center'
     sortBtn.title =
         currentSortMode === 'newOnTop'
-            ? 'Sorter: Nye matcher øverst (trykk for kun dato)'
-            : 'Sorter: Kun dato (trykk for nye matcher øverst)'
+            ? 'Nye matcher øverst — trykk for å sortere kun på dato'
+            : 'Sortert på dato — trykk for å vise nye matcher øverst'
     sortBtn.innerHTML =
         currentSortMode === 'newOnTop'
-            ? '<span style="font-size:1.2em;">&#128200;</span>' // bar chart icon
-            : '<span style="font-size:1.2em;">&#128197;</span>' // calendar icon
+            ? '<span style="font-size:1.2em;">&#128200;</span>'
+            : '<span style="font-size:1.2em;">&#128197;</span>'
     sortBtn.onclick = () => {
         currentSortMode =
             currentSortMode === 'newOnTop' ? 'allByDate' : 'newOnTop'
@@ -65,12 +65,8 @@ function renderReviewTable(combined) {
     const pairColors = ['bg-green-200', 'bg-green-100']
     let colorIdx = 0
     let rowNum = 1
-    let highlightedRows = new Set() // Track currently highlighted rows
 
-    // Function to highlight matching rows
     function highlightMatchingRows(avstemmingTag) {
-        // Clear previous highlights
-        highlightedRows.clear()
         const allTableRows = tbody.querySelectorAll('tr')
         allTableRows.forEach((row) => {
             row.classList.remove('bg-yellow-200', 'ring-2', 'ring-yellow-400')

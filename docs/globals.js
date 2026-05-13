@@ -33,3 +33,19 @@ let currentSortMode = 'allByDate' // 'newOnTop' or 'allByDate'
 
 // Save stats to not calculate multiple times
 let total_length = 0
+let cachedCombined = null
+let cachedCombinedKey = null
+
+function invalidateMatchCache() {
+    cachedCombined = null
+    cachedCombinedKey = null
+}
+
+function getCombined() {
+    if (!mainData || !srbankData || !duettData) return null
+    const key = `${mainData.length}|${srbankData.length}|${duettData.length}`
+    if (cachedCombined && cachedCombinedKey === key) return cachedCombined
+    cachedCombined = matchAllTransactions(mainData, srbankData, duettData)
+    cachedCombinedKey = key
+    return cachedCombined
+}

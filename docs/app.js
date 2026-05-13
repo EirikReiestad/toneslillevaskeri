@@ -2,11 +2,7 @@ console.log(`Version 0.0.8`)
 
 handleFileInput(srbankInput, (data) => {
     srbankData = data
-    srbankData.map((row) => {
-        const newRow = row
-        newRow['Dato'] = newRow['Dato'].replace('.', '/')
-        return newRow
-    })
+    invalidateMatchCache()
     renderPreview()
     updateStats()
 })
@@ -14,6 +10,7 @@ handleFileInput(srbankInput, (data) => {
 handleFileInput(duettInput, (data) => {
     // Skip first two rows (headers/irrelevant)
     duettData = Array.isArray(data) ? data.slice(2) : data
+    invalidateMatchCache()
     renderPreview()
     updateStats()
 })
@@ -33,6 +30,7 @@ handleFileInput(mainInput, (data, file) => {
         mainData = trimColumnHeaders(json)
         // Store main workbook for download
         window.mainWorkbook = workbook
+        invalidateMatchCache()
         renderPreview()
         updateStats()
     }
@@ -61,7 +59,7 @@ navReview.addEventListener('click', (e) => {
     navInput.classList.add('text-gray-600', 'border-transparent')
     // Only run if all files are loaded
     if (mainData && srbankData && duettData) {
-        const combined = matchAllTransactions(mainData, srbankData, duettData)
+        const combined = getCombined()
         renderReviewTable(combined)
     } else {
         reviewView.innerHTML =

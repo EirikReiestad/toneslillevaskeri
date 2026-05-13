@@ -28,7 +28,7 @@ function updateStats() {
 
     // Calculate matching statistics if all files are loaded
     if (mainData && srbankData && duettData) {
-        const combined = matchAllTransactions(mainData, srbankData, duettData)
+        const combined = getCombined()
 
         // Count existing matches (rows with Avstemming that are not new)
         const existingMatches = combined.filter(

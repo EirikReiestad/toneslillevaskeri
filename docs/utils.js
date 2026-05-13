@@ -35,31 +35,15 @@ function trimColumnHeaders(jsonData) {
 
 // Excel serial date to Norwegian string
 function excelDateToNorwegian(date) {
-    if (typeof date == 'number') return serialDateToDate(date)
-    let splitDate = date.split('/').join(',').split('.').join(',')
-    splitDate = splitDate.split(',')
-    if (splitDate.length !== 3) {
-        return false
-    }
-    const year = splitDate[2]
-    const month = splitDate[1]
-    const day = splitDate[0]
+    if (typeof date === 'number') return serialDateToDate(date)
+    if (typeof date !== 'string' || date === '') return ''
+    const splitDate = date.split('/').join(',').split('.').join(',').split(',')
+    if (splitDate.length !== 3) return ''
+    const [day, month, year] = splitDate
     return `${day}/${month}/${year}`
 }
 
-// Excel serial date to Norwegian string
-function excelDateToNorwegianSrbank(date) {
-    if (typeof date == 'number') return serialDateToDate(date)
-    let splitDate = date.split('/').join(',').split('.').join(',')
-    splitDate = splitDate.split(',')
-    if (splitDate.length !== 3) {
-        return false
-    }
-    const year = splitDate[2]
-    const month = splitDate[1]
-    const day = splitDate[0]
-    return `${day}/${month}/${year}`
-}
+const excelDateToNorwegianSrbank = excelDateToNorwegian
 
 function serialDateToDate(serial) {
     if (typeof serial !== 'number') return serial

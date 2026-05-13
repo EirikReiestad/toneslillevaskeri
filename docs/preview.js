@@ -34,7 +34,7 @@ function createTablePreview(data, label) {
     // Add scrollable wrapper
     const scrollWrap = document.createElement('div')
     scrollWrap.className =
-        'overflow-x-auto overflow-y-auto max-h-48 bg-gray-50 rounded shadow-inner w-full'
+        'overflow-x-auto overflow-y-auto max-h-[70vh] bg-gray-50 rounded shadow-inner w-full'
     const table = document.createElement('table')
     table.className = 'min-w-full text-xs border border-gray-200'
     if (data.length === 0) {
@@ -57,9 +57,7 @@ function createTablePreview(data, label) {
     table.appendChild(thead)
     // Body
     const tbody = document.createElement('tbody')
-    // For Duett, skip first two rows in preview
     let previewRows = data
-    if (label === 'Duett') previewRows = data.slice(2)
     // For SRBank, skip empty rows
     if (label === 'SRBank') {
         previewRows = data.filter((row) =>

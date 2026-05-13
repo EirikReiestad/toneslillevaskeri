@@ -49,18 +49,21 @@ function mapMainRow(row) {
 function mapSRBankToMain(row) {
     let dato = row['Dato'] || ''
     dato = excelDateToNorwegianSrbank(dato)
+    const inn = parseFloat(row['Inn'] || 0)
+    const ut = parseFloat(row['Ut'] || 0)
+    const netto = inn + ut
+    const nettoOut = isNaN(netto) ? '' : netto
     return {
         Dato: dato,
         System: 'SR-bank',
         Inn: row['Inn'] || '',
         Ut: row['Ut'] || '',
-        Netto: parseFloat(row['Inn'] || 0) + parseFloat(row['Ut'] || 0) || '',
-        'SR+ DU-':
-            parseFloat(row['Inn'] || 0) + parseFloat(row['Ut'] || 0) || '',
+        Netto: nettoOut,
+        'SR+ DU-': nettoOut,
         Avstemming: '',
         'SR-bank: Type': row['Type'] || '',
-        'SR-bank: Fra': row['Fra'] || '',
-        'SR-bank: Til': row['Til'] || '',
+        'SR-bank: Fra': row['Fra konto'] || '',
+        'SR-bank: Til': row['Til konto'] || '',
         Bilag: '',
         'Duett: Periode': '',
         Beskrivelse: row['Beskrivelse'] || '',
@@ -70,17 +73,18 @@ function mapSRBankToMain(row) {
 function mapDuettToMain(row) {
     let dato = row['Dato'] || ''
     dato = excelDateToNorwegian(dato)
+    const debet = parseFloat(row['Debet'] || 0)
+    const kredit = parseFloat(row['Kredit'] || 0)
+    const netto = debet - kredit
+    const nettoOut = isNaN(netto) ? '' : netto
+    const srDuOut = isNaN(netto) ? '' : -netto
     return {
         Dato: dato,
         System: 'Duett',
         Inn: row['Debet'] || '',
         Ut: row['Kredit'] || '',
-        Netto:
-            parseFloat(row['Debet'] || 0) - parseFloat(row['Kredit'] || 0) ||
-            '',
-        'SR+ DU-': -(
-            parseFloat(row['Debet'] || 0) - parseFloat(row['Kredit'] || 0) || ''
-        ),
+        Netto: nettoOut,
+        'SR+ DU-': srDuOut,
         Avstemming: '',
         'SR-bank: Type': '',
         'SR-bank: Fra': '',

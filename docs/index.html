@@ -6,24 +6,23 @@
         <title>Tones Lille Vaskeri - Transaksjonsavstemming</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-        <script src="globals.js" defer></script>
         <script src="utils.js" defer></script>
+        <script src="mainHandler.js" defer></script>
+        <script src="transactionHandler.js" defer></script>
+        <script src="globals.js" defer></script>
         <script src="statistics.js" defer></script>
-        <script src="loader.js" defer></script>
         <script src="preview.js" defer></script>
         <script src="fileHandler.js" defer></script>
         <script src="download.js" defer></script>
-        <script src="mainHandler.js" defer></script>
         <script src="render.js" defer></script>
-        <script src="transactionHandler.js" defer></script>
         <script src="app.js" defer></script>
     </head>
-    <body class="bg-gray-100 h-screen overflow-hidden font-sans">
-        <div class="h-full flex flex-col justify-start min-h-screen">
+    <body class="bg-gray-100 min-h-screen font-sans">
+        <div class="flex flex-col justify-start min-h-screen">
             <!-- Stats Panel -->
             <div
                 id="stats-panel"
-                class="absolute top-4 left-4 bg-white rounded-lg shadow p-4 text-sm z-20 max-w-xs"
+                class="fixed bottom-4 right-4 bg-white rounded-lg shadow p-4 text-sm z-20 max-w-xs"
             >
                 <h3 class="font-semibold mb-2 text-gray-800">Statistikk</h3>
                 <div id="stats-content" class="text-gray-600">
@@ -63,7 +62,7 @@
                     >
                 </div>
             </nav>
-            <main class="w-full flex flex-col justify-center flex-1">
+            <main class="w-full flex flex-col flex-1">
                 <div class="w-full max-w-7xl mx-auto px-4">
                     <div id="input-view">
                         <div

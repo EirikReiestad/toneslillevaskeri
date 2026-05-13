@@ -30,9 +30,13 @@ function matchAllTransactions(mainRows, srbankRows, duettRows) {
     const all = mergeRows(mainRows, srbankRows, duettRows)
     total_length = all.length
 
-    all.sort((a, b) =>
-        a['Dato'] > b['Dato'] ? 1 : a['Dato'] < b['Dato'] ? -1 : 0
-    )
+    // Sort by date so first-match pairing finds nearest in time
+    all.sort((a, b) => {
+        const da = parseNorwegianDate(a['Dato'])
+        const db = parseNorwegianDate(b['Dato'])
+        return da - db
+    })
+
     let maxANum = 0
     all.forEach((row) => {
         if (row['Avstemming'] && /^A\d+$/.test(row['Avstemming'])) {
@@ -61,7 +65,6 @@ function matchAllTransactions(mainRows, srbankRows, duettRows) {
                 const d2 = new Date(
                     all[j]['Dato'].split('/').reverse().join('-')
                 )
-                console.log(all[i]['Dato'], d1, all[j]['Dato'], d2)
                 const diffDays = Math.abs((d1 - d2) / (1000 * 60 * 60 * 24))
                 if (diffDays <= 3) {
                     const tag = `A${tagCounter++}`
@@ -79,14 +82,15 @@ function matchAllTransactions(mainRows, srbankRows, duettRows) {
         }
     }
     for (let i = 0; i < all.length; ++i) {
-        // Utter trash code:)
         const netto = parseFloat(all[i]['Netto'] || 0)
-        if (all[i]['Inn'] || all[i]['Inn'] !== '') {
-            all[i]['Inn'] = Math.abs(all[i]['Inn'])
+        const inn = all[i]['Inn']
+        const ut = all[i]['Ut']
+        if (inn !== '' && inn != null) {
+            all[i]['Inn'] = Math.abs(parseFloat(inn) || 0)
             continue
         }
-        if (all[i]['Ut'] || all[i]['Ut'] !== '') {
-            all[i]['Ut'] = Math.abs(all[i]['Ut'])
+        if (ut !== '' && ut != null) {
+            all[i]['Ut'] = Math.abs(parseFloat(ut) || 0)
             continue
         }
         if (netto > 0) {
