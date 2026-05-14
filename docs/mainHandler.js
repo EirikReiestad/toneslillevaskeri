@@ -11,14 +11,15 @@ function mergeRows(mainRows, srbankRows, duettRows) {
         .filter((row) => isValidDateString(row['Dato']))
 
     const seen = new Set()
+    const keyToRow = new Map()
     const unique = []
 
     // Assume no duplicate for the current main file
     for (const row of mainMapped) {
         const key = createTransactionKey(row)
-        /* if (!mainSeen.has(key)) {} */
         seen.add(key)
         unique.push(row)
+        keyToRow.set(key, row)
     }
 
     // Anta at det ikke er duplikater i srbank eller duett linjene
@@ -26,7 +27,19 @@ function mergeRows(mainRows, srbankRows, duettRows) {
         const key = createTransactionKey(row)
         if (!seen.has(key)) {
             unique.push(row)
-            continue
+            seen.add(key)
+            keyToRow.set(key, row)
+        } else {
+            // Merge extra fields from srbank/duett into the existing main row
+            const existing = keyToRow.get(key)
+            if (existing) {
+                const mergeFields = ['SR-bank: Type', 'SR-bank: Fra', 'SR-bank: Til', 'Duett: Periode', 'Bilag']
+                for (const field of mergeFields) {
+                    if (row[field] && !existing[field]) {
+                        existing[field] = row[field]
+                    }
+                }
+            }
         }
     }
 
