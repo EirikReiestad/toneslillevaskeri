@@ -1,6 +1,5 @@
 // Create a unique identifier for a transaction
 function createTransactionKey(row) {
-    // Use date, system, amount, and description to create a unique key
     const date = row['Dato'] || ''
     const system = row['System'] || ''
     const netto = parseFloat(row['Netto'] || 0).toFixed(2)

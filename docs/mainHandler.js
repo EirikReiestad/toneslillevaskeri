@@ -11,35 +11,19 @@ function mergeRows(mainRows, srbankRows, duettRows) {
         .filter((row) => isValidDateString(row['Dato']))
 
     const seen = new Set()
-    const keyToRow = new Map()
     const unique = []
 
-    // Assume no duplicate for the current main file
     for (const row of mainMapped) {
         const key = createTransactionKey(row)
         seen.add(key)
         unique.push(row)
-        keyToRow.set(key, row)
     }
 
-    // Anta at det ikke er duplikater i srbank eller duett linjene
     for (const row of [...srbankMapped, ...duettMapped]) {
         const key = createTransactionKey(row)
         if (!seen.has(key)) {
             unique.push(row)
             seen.add(key)
-            keyToRow.set(key, row)
-        } else {
-            // Merge extra fields from srbank/duett into the existing main row
-            const existing = keyToRow.get(key)
-            if (existing) {
-                const mergeFields = ['SR-bank: Type', 'SR-bank: Fra', 'SR-bank: Til', 'Duett: Periode', 'Bilag']
-                for (const field of mergeFields) {
-                    if (row[field] && !existing[field]) {
-                        existing[field] = row[field]
-                    }
-                }
-            }
         }
     }
 
@@ -64,9 +48,9 @@ function mapSRBankToMain(row) {
     dato = excelDateToNorwegianSrbank(dato)
     const inn = parseFloat(row['Inn'] || 0)
     const ut = parseFloat(row['Ut'] || 0)
-    const netto = inn + ut
+    const netto = inn - ut
     const nettoOut = isNaN(netto) ? '' : netto
-    return {
+    const result = {
         Dato: dato,
         System: 'SR-bank',
         Inn: row['Inn'] || '',
@@ -81,6 +65,7 @@ function mapSRBankToMain(row) {
         'Duett: Periode': '',
         Beskrivelse: row['Beskrivelse'] || '',
     }
+    return result
 }
 
 function mapDuettToMain(row) {
